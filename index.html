@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEDBYEGGS // THE SHATTER | 2026.EXEC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bangers&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #000; color: #fff; overflow-x: hidden; margin: 0; cursor: progress; }
+        .ratbag-font { font-family: 'Archivo Black', sans-serif; text-transform: uppercase; line-height: 0.8; }
+        .accent-font { font-family: 'Bangers', cursive; letter-spacing: 2px; }
+        
+        /* The Mojo Shake */
+        @keyframes jitter {
+            0% { transform: translate(0,0); }
+            10% { transform: translate(-3px, -3px); }
+            20% { transform: translate(3px, 3px); }
+            100% { transform: translate(0,0); }
+        }
+        .jitter:hover { animation: jitter 0.12s infinite; cursor: cell; } /* Cell cursor = 'something is about to happen' */
+
+        .scrawl-border { border: 8px solid #fff; box-shadow: 15px 15px 0px #facc15; }
+        
+        /* Particle Canvas (Z-index 50) */
+        #shatter-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* Let clicks pass through */
+            z-index: 50;
+        }
+
+        .egg-spin { animation: spin 4s linear infinite; display: inline-block; opacity: 0.05; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <canvas id="shatter-canvas"></canvas>
+
+    <div class="fixed top-10 left-1/2 -translate-x-1/2 pointer-events-none">
+        <span class="egg-spin text-[30vw]">🥚</span>
+    </div>
+
+    <main class="relative z-10 max-w-4xl w-full">
+        <div class="text-center mb-16">
+            <h1 id="headline" class="ratbag-font text-[18vw] md:text-[14vw] italic text-yellow-400 jitter cursor-default select-none group">
+                LEDBY<br>EGGS
+                <div class="absolute inset-0 bg-yellow-400 opacity-0 group-hover:opacity-10 blur-xl rounded-full"></div>
+            </h1>
+            <p class="accent-font text-4xl md:text-6xl mt-4 bg-white text-black px-6 py-3 inline-block -rotate-2">
+                FOR A CRACKING TIME.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div class="scrawl-border bg-zinc-900 p-10 flex flex-col justify-between">
+                <div>
+                    <h2 class="ratbag-font text-5xl mb-6">JOIN THE GANG</h2>
+                    <p class="font-bold mb-8 text-yellow-400">Want in on the next stunt? Get the alerts before the police do.</p>
+                </div>
+                <div class="space-y-4">
+                    <input type="email" placeholder="YOUR EMAIL HERE" class="w-full p-4 bg-black border-2 border-white text-white font-black uppercase outline-none focus:border-yellow-400">
+                    <button class="w-full bg-white text-black p-4 ratbag-font text-2xl hover:bg-yellow-400 transition">SIGN UP</button>
+                </div>
+            </div>
+
+            <div class="scrawl-border bg-yellow-400 p-10 flex flex-col justify-between -rotate-1 relative">
+                <div class="absolute top-2 right-2 text-red-600 font-black rotate-12 bg-black px-2 py-1 text-xs">AMMO FUND</div>
+                <div>
+                    <h2 class="ratbag-font text-5xl text-black mb-6">DONATE $</h2>
+                    <p class="font-bold text-black mb-10">We run on coffee, mischief, and your donations. Keep the eggs flying.</p>
+                </div>
+                <button class="w-full bg-black text-white p-7 ratbag-font text-5xl shadow-[15px_15px_0px_0px_rgba(255,255,255,1)] hover:scale-105 transition">
+                    DONATE
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-20 text-center opacity-40 font-black uppercase tracking-[0.5em] text-[10px]">
+            No suits. No bores. Just chaos. <br> Operating with high performance in Wellington, 2026.
+        </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('shatter-canvas');
+        const ctx = canvas.getContext('2d');
+        const headline = document.getElementById('headline');
+        
+        let particles = [];
+        let isHovering = false;
+
+        // Resize
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 1. DATA: The Scrawled Objects (Large recognition)
+        // We use custom jagged polygon points and specific color codes.
+
+        const SHELL_COLOR = "rgba(255, 255, 255, {alpha})"; // Alpha-replaced white
+        const YOLK_COLOR = "#d4af37"; // A deeper, 'ratbag' gold/yellow
+        const CHICK_COLOR = "#facc15"; // ACT-pink/Marmite-yellow fusion
+
+        const fragmentData = [
+            // SHELL FRAGMENT A (Jagged white block)
+            { type: 'shell', points: [[-10, -10], [10, -12], [15, 5], [5, 15], [-12, 10]], color: SHELL_COLOR },
+            // SHELL FRAGMENT B (More curved, broken)
+            { type: 'shell', points: [[0, -15], [12, -8], [14, 10], [0, 15], [-10, 5]], color: SHELL_COLOR },
+            // YOLK (Wobbly yellow sphere shape)
+            { type: 'yolk', points: [[-15, -5], [0, -15], [15, -5], [10, 10], [0, 15], [-10, 10]], color: YOLK_COLOR, wobble: true },
+            // THE ULTRA-RARE CHICK (Pixelated/scrawled bird shape)
+            { type: 'chick', points: [[-5, -10], [5, -10], [10, 0], [5, 5], [-5, 5], [-10, 0]], color: CHICK_COLOR }
+        ];
+
+        class ShatterFragment {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                // Randomly select type, with yolk being occasional, chick being rare
+                const rand = Math.random();
+                let typeData;
+                if (rand > 0.99) typeData = fragmentData[3]; // CHICK (1% chance)
+                else if (rand > 0.85) typeData = fragmentData[2]; // YOLK (14% chance)
+                else typeData = fragmentData[Math.floor(Math.random()*2)]; // SHELL (85% chance)
+
+                this.type = typeData.type;
+                this.points = typeData.points;
+                this.baseColor = typeData.color;
+                
+                // Recognizing Size: Larger than standard particles
+                this.size = (this.type === 'chick' || this.type === 'yolk') ? 1.5 : (Math.random() * 2 + 1.2); 
+                
+                // Physics: Tumble and spin
+                this.speedX = (Math.random() - 0.5) * 8;
+                this.speedY = (Math.random() - 0.5) * 8 - 4; // Add initial pop
+                this.gravity = 0.25;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.25;
+                this.opacity = 1;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.speedY += this.gravity;
+                this.rotation += this.rotationSpeed;
+                this.opacity -= 0.015;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.scale(this.size, this.size); // Scale the recognition
+
+                ctx.beginPath();
+                ctx.moveTo(this.points[0][0], this.points[0][1]);
+                for(let i=1; i<this.points.length; i++) {
+                    ctx.lineTo(this.points[i][0], this.points[i][1]);
+                }
+                ctx.closePath();
+
+                // Define Color / Opacity
+                if (this.baseColor.includes("{alpha}")) {
+                    // Shells fade out
+                    ctx.fillStyle = this.baseColor.replace("{alpha}", this.opacity);
+                } else {
+                    // Chicks and Yolks don't fade, they just are
+                    ctx.fillStyle = this.baseColor;
+                    if (this.opacity < 0.2) ctx.fillStyle = "rgba(0,0,0,0)"; // Instant poof
+                }
+                
+                ctx.fill();
+
+                // 2. The Ratbag Edge: Scrawled outline for shells
+                if (this.type === 'shell') {
+                    ctx.strokeStyle = `rgba(0, 0, 0, ${this.opacity})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        headline.addEventListener('mouseenter', () => isHovering = true);
+        headline.addEventListener('mouseleave', () => isHovering = false);
+
+        window.addEventListener('mousemove', (e) => {
+            if (isHovering) {
+                // High Mojo Stream: Spawn multiple fragments per move
+                for(let i=0; i<4; i++) {
+                    particles.push(new ShatterFragment(e.clientX, e.clientY));
+                }
+            }
+        });
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                // Kill particles when they are offscreen or faded
+                if (particles[i].opacity <= 0 || particles[i].y > canvas.height + 50) {
+                    particles.splice(i, 1);
+                    i--;
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body>
+</html>
